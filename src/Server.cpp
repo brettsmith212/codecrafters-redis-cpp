@@ -52,7 +52,26 @@ int main(int argc, char **argv) {
 
   int client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
                          (socklen_t *)&client_addr_len);
-  send(client_fd, "+PONG\r\n", 7, 0);
+
+  while (true) {
+    char *buf[100];
+    ssize_t recv_status = recv(client_fd, (void *)buf, 100, 0);
+    if (recv_status == -1) {
+      std::cout << "recv hit\n";
+      std::cerr << "Failed to receive message\n";
+      return 1;
+    }
+
+    const char *message = "+PONG\r\n";
+
+    ssize_t send_status =
+        send(client_fd, (const void *)message, strlen(message), 0);
+    if (send_status == -1) {
+      std::cout << "send hit\n";
+      std::cerr << "Failed to send message\n";
+      return 1;
+    }
+  }
 
   std::cout << "Client connected\n";
 
