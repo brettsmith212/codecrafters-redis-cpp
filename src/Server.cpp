@@ -4,9 +4,26 @@
 #include <iostream>
 #include <netdb.h>
 #include <string>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <thread>
 #include <unistd.h>
+
+void handle_client(int client_fd) {
+  const std::string message = "+PONG\r\n";
+
+  while (true) {
+    char buf[1024];
+    ssize_t recv_status = recv(client_fd, &buf, sizeof(buf), 0);
+    if (recv_status <= 0) {
+      close(client_fd);
+      break;
+    }
+
+    send(client_fd, message.c_str(), message.size(), 0);
+  }
+}
 
 int main(int argc, char **argv) {
   // Flush after every std::cout / std::cerr
@@ -50,30 +67,13 @@ int main(int argc, char **argv) {
 
   std::cout << "Waiting for a client to connect...\n";
 
-  int client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
-                         (socklen_t *)&client_addr_len);
-
   while (true) {
-    char *buf[100];
-    ssize_t recv_status = recv(client_fd, (void *)buf, 100, 0);
-    if (recv_status == -1) {
-      std::cout << "recv hit\n";
-      std::cerr << "Failed to receive message\n";
-      return 1;
-    }
-
-    const char *message = "+PONG\r\n";
-
-    ssize_t send_status =
-        send(client_fd, (const void *)message, strlen(message), 0);
-    if (send_status == -1) {
-      std::cout << "send hit\n";
-      std::cerr << "Failed to send message\n";
-      return 1;
-    }
+    int client_fd = accept(server_fd, (struct sockaddr *)&client_addr,
+                           (socklen_t *)&client_addr_len);
+    std::cout << "Client connected\n";
+    std::thread nw(handle_client, client_fd);
+    nw.detach();
   }
-
-  std::cout << "Client connected\n";
 
   close(server_fd);
 
